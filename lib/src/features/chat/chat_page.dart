@@ -16,96 +16,113 @@ class ChatPage extends ConsumerStatefulWidget {
 
 class _ChatPageState extends ConsumerState<ChatPage> {
   final _inputController = TextEditingController();
+  late final ProviderSubscription<AsyncValue<BleEventDto>> _bleSubscription;
+  late final ProviderSubscription<AsyncValue<List<MessageDto>>> _messagesSubscription;
 
   @override
   void initState() {
     super.initState();
-  }
-
-  @override
-  void dispose() {
-    _inputController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    ref.listen<AsyncValue<BleEventDto>>(
+    _bleSubscription = ref.listenManual<AsyncValue<BleEventDto>>(
       bleEventsProvider,
       (previous, next) {
         next.whenData((event) {
-          if (event.type == 'notify' && event.payload != null) {
+          if (event.type == 'notify' &&
+              event.deviceId == widget.peerId &&
+              event.payload != null) {
             Notifications.show('新消息', event.payload!);
           }
         });
       },
     );
+    _messagesSubscription = ref.listenManual<AsyncValue<List<MessageDto>>>(
+      messagesProvider(widget.peerId),
+      (previous, next) {
+        if (next.hasValue) {
+          Storage.markConversationRead(widget.peerId);
+        }
+      },
+    );
+  }
 
-    final messagesStream = Storage.watchMessages(widget.peerId);
+  @override
+  void dispose() {
+    _bleSubscription.close();
+    _messagesSubscription.close();
+    _inputController.dispose();
+    super.dispose();
+  }
+
+  Widget _buildMessages(List<MessageDto> messages) {
+    return ListView.builder(
+      reverse: true,
+      itemCount: messages.length,
+      itemBuilder: (_, index) {
+        final message = messages[index];
+        final alignment = message.direction == MessageDirection.out
+            ? Alignment.centerRight
+            : Alignment.centerLeft;
+        return Align(
+          alignment: alignment,
+          child: Container(
+            margin: const EdgeInsets.symmetric(
+              vertical: 6,
+              horizontal: 12,
+            ),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.black12,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(message.text),
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final messagesAsync = ref.watch(messagesProvider(widget.peerId));
     return Scaffold(
       appBar: AppBar(title: Text('与 ${widget.peerId}')),
-      body: StreamBuilder<List<MessageDto>>(
-        stream: messagesStream,
-        builder: (_, snapshot) {
-          final messages = snapshot.data ?? const <MessageDto>[];
-          return Column(
-            children: [
-              Expanded(
-                child: ListView.builder(
-                  reverse: true,
-                  itemCount: messages.length,
-                  itemBuilder: (_, index) {
-                    final message = messages[index];
-                    final alignment = message.direction == MessageDirection.out
-                        ? Alignment.centerRight
-                        : Alignment.centerLeft;
-                    return Align(
-                      alignment: alignment,
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(
-                          vertical: 6,
-                          horizontal: 12,
-                        ),
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.black12,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(message.text),
-                      ),
-                    );
+      body: Column(
+        children: [
+          Expanded(
+            child: messagesAsync.when(
+              data: (messages) => _buildMessages(messages),
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (error, stackTrace) => Center(
+                child: Text('加载消息失败：$error'),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _inputController,
+                    decoration: const InputDecoration(
+                      hintText: 'Text...',
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.send),
+                  onPressed: () async {
+                    final text = _inputController.text.trim();
+                    if (text.isEmpty) {
+                      return;
+                    }
+                    _inputController.clear();
+                    await ref.read(bleControllerProvider.notifier).send(text);
                   },
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(8),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _inputController,
-                        decoration: const InputDecoration(
-                          hintText: 'Text...',
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.send),
-                      onPressed: () async {
-                        final text = _inputController.text.trim();
-                        if (text.isEmpty) {
-                          return;
-                        }
-                        _inputController.clear();
-                        await ref.read(bleControllerProvider.notifier).send(text);
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          );
-        },
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

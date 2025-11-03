@@ -44,6 +44,7 @@ class BleController extends StateNotifier<String?> {
 
   Future<void> connect(String deviceId) async {
     state = deviceId;
+    await Storage.ensureConversation(deviceId);
     _emit(
       BleEventDto(
         type: 'connected',

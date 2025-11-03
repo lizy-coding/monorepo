@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:monorepo/src/core/ble/core_ble.dart';
+import 'package:monorepo/src/core/domain/core_domain.dart';
+import 'package:monorepo/src/core/storage/storage.dart';
 
 class DevicesPage extends ConsumerStatefulWidget {
   const DevicesPage({super.key});
@@ -12,20 +14,24 @@ class DevicesPage extends ConsumerStatefulWidget {
 
 class _DevicesPageState extends ConsumerState<DevicesPage> {
   final List<String> _devices = <String>[];
+  late final ProviderSubscription<AsyncValue<BleEventDto>> _bleSubscription;
+
+  String _formatTimestamp(DateTime ts) {
+    final local = ts.toLocal();
+    final hours = local.hour.toString().padLeft(2, '0');
+    final minutes = local.minute.toString().padLeft(2, '0');
+    return '$hours:$minutes';
+  }
 
   @override
   void initState() {
     super.initState();
-    ref.read(bleControllerProvider.notifier).scan();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    ref.listen<AsyncValue<BleEventDto>>(
+    _bleSubscription = ref.listenManual<AsyncValue<BleEventDto>>(
       bleEventsProvider,
       (previous, next) {
         next.whenData((event) {
           if (event.type == 'scan_result' && !_devices.contains(event.deviceId)) {
+            if (!mounted) return;
             setState(() {
               _devices.add(event.deviceId);
             });
@@ -33,22 +39,88 @@ class _DevicesPageState extends ConsumerState<DevicesPage> {
         });
       },
     );
+    ref.read(bleControllerProvider.notifier).scan();
+  }
+
+  @override
+  void dispose() {
+    _bleSubscription.close();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final conversationsAsync = ref.watch(conversationsProvider);
+    final conversations = conversationsAsync.value ?? const <ConversationDto>[];
 
     return Scaffold(
       appBar: AppBar(title: const Text('BLE 设备')),
-      body: ListView.builder(
-        itemCount: _devices.length,
-        itemBuilder: (_, index) {
-          final deviceId = _devices[index];
-          return ListTile(
-            title: Text(deviceId),
-            onTap: () async {
-              await ref.read(bleControllerProvider.notifier).connect(deviceId);
-              if (!mounted) return;
-              context.go('/chat?peer=$deviceId');
-            },
-          );
-        },
+      body: ListView(
+        children: [
+          if (conversationsAsync.isLoading)
+            const LinearProgressIndicator(
+              minHeight: 2,
+            ),
+          if (conversationsAsync.hasError)
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                '加载会话失败：${conversationsAsync.error}',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.red),
+              ),
+            ),
+          if (conversations.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text(
+                '最近会话',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
+          for (final conversation in conversations)
+            ListTile(
+              title: Text(conversation.title ?? conversation.peerId),
+              subtitle: Text(
+                '上次更新：${_formatTimestamp(conversation.updatedAt)}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              trailing: conversation.unread > 0
+                  ? CircleAvatar(
+                      radius: 12,
+                      child: Text(
+                        '${conversation.unread}',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(color: Colors.white),
+                      ),
+                    )
+                  : null,
+              onTap: () {
+                context.go('/chat?peer=${conversation.peerId}');
+              },
+            ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
+            child: Text(
+              '扫描到的设备',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+          ),
+          if (_devices.isEmpty)
+            const ListTile(
+              title: Text('暂无设备'),
+              subtitle: Text('正在扫描附近的蓝牙设备...'),
+            ),
+          for (final deviceId in _devices)
+            ListTile(
+              title: Text(deviceId),
+              onTap: () async {
+                await ref.read(bleControllerProvider.notifier).connect(deviceId);
+                if (!mounted) return;
+                context.go('/chat?peer=$deviceId');
+              },
+            ),
+          const SizedBox(height: 16),
+        ],
       ),
     );
   }
