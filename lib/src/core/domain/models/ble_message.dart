@@ -78,8 +78,8 @@ class BleMessage {
     String? receiverDeviceId,
     String? payload,
     DateTime? createdAt,
-    DateTime? deliveredAt = _keepDeliveredAt,
-    DateTime? readAt = _keepReadAt,
+    DateTime? deliveredAt,
+    DateTime? readAt,
   }) {
     final newPayload = payload ?? this.payload;
     _validatePayload(newPayload);
@@ -90,16 +90,10 @@ class BleMessage {
       receiverDeviceId: receiverDeviceId ?? this.receiverDeviceId,
       payload: newPayload,
       createdAt: createdAt ?? this.createdAt,
-      deliveredAt: identical(deliveredAt, _keepDeliveredAt)
-          ? this.deliveredAt
-          : deliveredAt,
-      readAt:
-          identical(readAt, _keepReadAt) ? this.readAt : readAt,
+      deliveredAt: deliveredAt ?? this.deliveredAt,
+      readAt: readAt ?? this.readAt,
     );
   }
-
-  static final DateTime? _keepDeliveredAt = DateTime.fromMillisecondsSinceEpoch(0);
-  static final DateTime? _keepReadAt = DateTime.fromMillisecondsSinceEpoch(0);
 
   /// Returns a copy where [deliveredAt] is set to [timestamp].
   BleMessage markDelivered(DateTime timestamp) =>

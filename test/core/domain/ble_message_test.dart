@@ -1,5 +1,6 @@
-import 'package:core_domain/core_domain.dart';
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart'
+    show containsAll, equals, expect, group, isA, isNotNull, isTrue, test, throwsA;
+import 'package:monorepo/src/core/domain/core_domain.dart';
 
 void main() {
   group('BleMessage', () {
