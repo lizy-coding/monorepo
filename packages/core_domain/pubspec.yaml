@@ -1,0 +1,14 @@
+name: core_domain
+description: Domain DTOs and serializers for the BLE IM app.
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+
+dependencies:
+  json_annotation: ^4.9.0
+
+dev_dependencies:
+  build_runner: ^2.4.9
+  json_serializable: ^6.8.0
