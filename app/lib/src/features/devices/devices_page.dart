@@ -1,9 +1,10 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'package:ble_chat_flutter/src/core/ble/core_ble.dart';
+import 'package:ble_chat_flutter/src/core/domain/core_domain.dart';
+import 'package:ble_chat_flutter/src/core/localization/localization.dart';
+import 'package:ble_chat_flutter/src/core/storage/storage.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:ble_chat_flutter/src/core/ble/core_ble.dart';
-import 'package:ble_chat_flutter/src/core/domain/core_domain.dart';
-import 'package:ble_chat_flutter/src/core/storage/storage.dart';
 
 class DevicesPage extends ConsumerStatefulWidget {
   const DevicesPage({super.key});
@@ -54,7 +55,7 @@ class _DevicesPageState extends ConsumerState<DevicesPage> {
     final conversations = conversationsAsync.value ?? const <ConversationDto>[];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('BLE devices')),
+      appBar: AppBar(title: Text(context.l10n.bleDevicesTitle)),
       body: ListView(
         children: [
           if (conversationsAsync.isLoading)
@@ -65,7 +66,7 @@ class _DevicesPageState extends ConsumerState<DevicesPage> {
             Padding(
               padding: const EdgeInsets.all(16),
               child: Text(
-                'Error: ${conversationsAsync.error}',
+                context.l10n.errorLabel('${conversationsAsync.error}'),
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.red),
               ),
             ),
@@ -73,7 +74,7 @@ class _DevicesPageState extends ConsumerState<DevicesPage> {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               child: Text(
-                'Conversations',
+                context.l10n.conversationsLabel,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
             ),
@@ -81,7 +82,7 @@ class _DevicesPageState extends ConsumerState<DevicesPage> {
             ListTile(
               title: Text(conversation.title ?? conversation.peerId),
               subtitle: Text(
-                'Last updated: ${_formatTimestamp(conversation.updatedAt)}',
+                context.l10n.conversationLastUpdated(_formatTimestamp(conversation.updatedAt)),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -101,14 +102,14 @@ class _DevicesPageState extends ConsumerState<DevicesPage> {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
             child: Text(
-              'Devices',
+              context.l10n.devicesLabel,
               style: Theme.of(context).textTheme.titleMedium,
             ),
           ),
           if (_devices.isEmpty)
-            const ListTile(
-              title: Text('No devices found'),
-              subtitle: Text('No devices found. Please scan for devices.'),
+            ListTile(
+              title: Text(context.l10n.noDevicesTitle),
+              subtitle: Text(context.l10n.noDevicesSubtitle),
             ),
           for (final deviceId in _devices)
             ListTile(

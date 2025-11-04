@@ -1,9 +1,10 @@
 ﻿import 'package:ble_chat_flutter/src/core/ble/core_ble.dart';
 import 'package:ble_chat_flutter/src/core/domain/core_domain.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:ble_chat_flutter/src/core/localization/localization.dart';
 import 'package:ble_chat_flutter/src/core/notifications/notifications.dart';
 import 'package:ble_chat_flutter/src/core/storage/storage.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class ChatPage extends ConsumerStatefulWidget {
   const ChatPage({super.key, required this.peerId});
@@ -29,7 +30,8 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           if (event.type == 'notify' &&
               event.deviceId == widget.peerId &&
               event.payload != null) {
-            Notifications.show('鏂版秷鎭?', event.payload!);
+            if (!mounted) return;
+            Notifications.show(context.l10n.notificationNewMessage, event.payload!);
           }
         });
       },
@@ -84,7 +86,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   Widget build(BuildContext context) {
     final messagesAsync = ref.watch(messagesProvider(widget.peerId));
     return Scaffold(
-      appBar: AppBar(title: Text('涓?${widget.peerId}')),
+      appBar: AppBar(title: Text(context.l10n.chatWithPeer(widget.peerId))),
       body: Column(
         children: [
           Expanded(
@@ -92,7 +94,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
               data: (messages) => _buildMessages(messages),
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (error, stackTrace) => Center(
-                child: Text('鍔犺浇娑堟伅澶辫触锛?error'),
+                child: Text(context.l10n.messagesLoadFailed('$error')),
               ),
             ),
           ),
@@ -103,8 +105,8 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                 Expanded(
                   child: TextField(
                     controller: _inputController,
-                    decoration: const InputDecoration(
-                      hintText: 'Text...',
+                    decoration: InputDecoration(
+                      hintText: context.l10n.messageInputHint,
                     ),
                   ),
                 ),
