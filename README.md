@@ -1,5 +1,10 @@
 # ble_chat_flutter
 
+[中文](./README.md) ｜ [English](./README.en.md)
+
+
+## 仓库简介
+
 Melos 管理的 Flutter 多包仓：`app/` 目录容纳主应用，`packages/` 目录收纳可复用的核心模块。自 Melos 3 起需先在仓库根目录安装工具依赖：执行 `dart pub get` 之后，再通过 `dart run melos bootstrap`、`dart run melos run gen` 与 `dart run melos run test` 驱动常见流程（详见 `README_MELOS.md`）。
 
 ## 仓库结构速览
